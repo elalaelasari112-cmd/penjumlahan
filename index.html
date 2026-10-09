@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crossword Ceria: Petualangan Penjumlahan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #e0f2fe; /* Tailwind blue-100 */
+            touch-action: manipulation; /* Prevent double-tap zoom on mobile */
+            overflow-x: hidden;
+        }
+        h1, h2, .title-font {
+            font-family: 'Fredoka One', cursive;
+        }
+        
+        /* Animations */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .animate-pop {
+            animation: pop 0.3s ease-in-out;
+        }
+        @keyframes star-burst {
+            0% { transform: scale(0) rotate(0deg); opacity: 1; }
+            50% { transform: scale(1.5) rotate(180deg); opacity: 1; }
+            100% { transform: scale(2) rotate(360deg); opacity: 0; }
+        }
+        .star-burst {
+            position: absolute;
+            top: 50%; left: 50%;
+            margin-top: -24px; margin-left: -24px;
+            font-size: 48px;
+            pointer-events: none;
+            animation: star-burst 1s forwards;
+            z-index: 50;
+        }
+
+        /* Grid styling */
+        .cw-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .cw-cell {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            background-color: white;
+            border: 4px solid #38bdf8; /* sky-400 */
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 900;
+            color: #1e3a8a;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        .cw-cell:hover {
+            transform: scale(1.05);
+            border-color: #facc15;
+        }
+        .cw-cell.active {
+            background-color: #fef08a; /* yellow-200 */
+            border-color: #eab308; /* yellow-500 */
+            transform: scale(1.05);
+        }
+        .cw-cell.solved {
+            background-color: #86efac; /* green-300 */
+            border-color: #22c55e; /* green-500 */
+            color: #14532d;
+            cursor: default;
+        }
+        .cw-cell.wrong {
+            background-color: #fdba74; /* orange-300 */
+            border-color: #f97316; /* orange-500 */
+            animation: shake 0.4s;
+        }
+        .cw-number {
+            position: absolute;
+            top: 4px;
+            left: 6px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #64748b;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* Numpad Button */
+        .numpad-btn {
+            background: linear-gradient(to bottom, #ffffff, #f1f5f9);
+            border: 2px solid #cbd5e1;
+            border-bottom-width: 4px;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #334155;
+            transition: all 0.1s;
+            user-select: none;
+        }
+        .numpad-btn:active {
+            transform: translateY(2px);
+            border-bottom-width: 2px;
+        }
+
+        /* Generic Button */
+        .btn-bubbly {
+            background: linear-gradient(to bottom, #fde047, #facc15);
+            border: 3px solid #ca8a04;
+            border-bottom-width: 6px;
+            color: #713f12;
+            text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
+            transition: all 0.1s;
+        }
+        .btn-bubbly:active {
+            transform: translateY(3px);
+            border-bottom-width: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col items-center justify-center relative">
+
+    
+    <!-- UI Container -->
+    <div id="app-container" class="w-full max-w-2xl mx-auto min-h-screen flex flex-col relative bg-blue-100 sm:min-h-[800px] sm:shadow-2xl sm:rounded-3xl overflow-hidden">
+        
+        <!-- ==================== HOME SCREEN ==================== -->
+        <div id="screen-home" class="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div class="animate-float mb-6 relative">
+                <div class="text-6xl mb-2">🧩✨🧮</div>
+            </div>
+            <h1 class="text-4xl sm:text-5xl text-sky-600 mb-2 drop-shadow-md">CROSSWORD CERIA</h1>
+            <h2 class="text-xl sm:text-2xl text-orange-500 mb-8 title-font">Petualangan Penjumlahan 1–10!</h2>
+            
+            <p class="text-lg font-bold text-slate-600 mb-8 max-w-md">
+                Belajar berhitung sambil bermain teka-teki silang yang seru dan penuh warna!
+            </p>
+            
+            <div class="flex flex-col gap-4 w-full max-w-xs">
+                <button onclick="startGame()" class="btn-bubbly rounded-2xl py-4 text-2xl title-font animate-pulse">
+                    MULAI BERMAIN
+                </button>
+                <button onclick="showInstructions()" class="bg-sky-400 hover:bg-sky-500 text-white font-bold py-3 rounded-2xl border-b-4 border-sky-600 active:translate-y-1 active:border-b-0 transition-all text-xl">
+                    PETUNJUK
+                </button>
+            </div>
+        </div>
+
+        <!-- ==================== INSTRUCTIONS MODAL ==================== -->
+        <div id="modal-instructions" class="hidden absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-6 max-w-sm w-full border-4 border-sky-400 shadow-2xl relative">
+                <h2 class="text-2xl text-sky-600 mb-4 title-font text-center">Cara Bermain</h2>
+                <ul class="text-left space-y-3 font-bold text-slate-600 mb-6">
+                    <li>👆 1. Pilih kotak nomor yang berkedip.</li>
+                    <li>👀 2. Baca soal penjumlahan Mendatar & Menurun.</li>
+                    <li>⌨️ 3. Ketik jawabanmu menggunakan angka.</li>
+                    <li>✅ 4. Tekan "PERIKSA" untuk melihat hasilnya.</li>
+                    <li>⭐ 5. Kumpulkan semua bintang!</li>
+                </ul>
+                <button onclick="hideInstructions()" class="btn-bubbly w-full py-3 rounded-xl text-xl title-font">
+                    MENGERTI!
+                </button>
+            </div>
+        </div>
+
+        <!-- ==================== GAME SCREEN ==================== -->
+        <div id="screen-game" class="hidden flex-1 flex flex-col p-4 w-full">
+            <!-- Header: Controls & Stats -->
+            <div class="flex justify-between items-center bg-white/70 p-3 rounded-2xl shadow-sm mb-4">
+                <div class="flex gap-2">
+                    <button onclick="toggleAudio()" id="btn-audio" class="p-2 bg-yellow-300 rounded-full text-xl shadow hover:scale-110 transition" title="Suara">
+                        🎵
+                    </button>
+                    <button onclick="toggleFullscreen()" class="p-2 bg-sky-300 rounded-full text-xl shadow hover:scale-110 transition" title="Layar Penuh">
+                        🔲
+                    </button>
+                </div>
+                <div class="text-right flex items-center gap-3">
+                    <div class="font-bold text-sky-800 text-lg">Skor: <span id="score-display" class="text-orange-500 text-2xl title-font">0</span></div>
+                    <div class="font-bold text-green-600">✅ <span id="correct-display">0</span>/8</div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-200 rounded-full h-4 mb-6 shadow-inner overflow-hidden">
+                <div id="progress-bar" class="bg-green-400 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+
+            <!-- Main Crossword Grid -->
+            <div id="crossword-container" class="cw-grid mb-6 relative">
+                <!-- Cells generated by JS -->
+            </div>
+
+            <!-- Interaction Area -->
+            <div class="bg-white rounded-3xl p-4 shadow-lg border-2 border-sky-200 mt-auto flex flex-col gap-4">
+                
+                <!-- Clue Display -->
+                <div class="bg-sky-50 rounded-xl p-3 text-center min-h-[90px] flex flex-col justify-center relative">
+                    <div id="clue-text" class="text-lg sm:text-xl font-bold text-slate-700">
+                        Pilih kotak nomor di atas ya! 👆
+                    </div>
+                    <!-- Visual Aid (Apples/Stars) -->
+                    <div id="visual-aid" class="text-2xl mt-2 hidden transition-all"></div>
+                    <button onclick="showHint()" id="btn-hint" class="hidden absolute top-2 right-2 bg-yellow-400 text-xs px-2 py-1 rounded-lg font-bold shadow hover:bg-yellow-500 text-yellow-900">
+                        💡 Bantuan Gambar
+                    </button>
+                </div>
+
+                <!-- Input Display -->
+                <div class="flex items-center justify-center gap-4">
+                    <div class="text-xl font-bold text-slate-600">Jawaban:</div>
+                    <div id="input-display" class="w-16 h-16 bg-slate-100 border-4 border-slate-300 rounded-xl text-3xl font-black text-center flex items-center justify-center text-sky-600">
+                        ?
+                    </div>
+                </div>
+
+                <!-- Numpad -->
+                <div class="grid grid-cols-5 gap-2 px-2">
+                    <button onclick="pressNum(1)" class="numpad-btn py-3">1</button>
+                    <button onclick="pressNum(2)" class="numpad-btn py-3">2</button>
+                    <button onclick="pressNum(3)" class="numpad-btn py-3">3</button>
+                    <button onclick="pressNum(4)" class="numpad-btn py-3">4</button>
+                    <button onclick="pressNum(5)" class="numpad-btn py-3">5</button>
+                    <button onclick="pressNum(6)" class="numpad-btn py-3">6</button>
+                    <button onclick="pressNum(7)" class="numpad-btn py-3">7</button>
+                    <button onclick="pressNum(8)" class="numpad-btn py-3">8</button>
+                    <button onclick="pressNum(9)" class="numpad-btn py-3">9</button>
+                    <button onclick="pressNum(0)" class="numpad-btn py-3">0</button>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2 mt-2">
+                    <button onclick="clearInput()" class="flex-1 bg-rose-400 hover:bg-rose-500 text-white font-bold py-3 rounded-xl shadow-md border-b-4 border-rose-600 active:translate-y-1 active:border-b-0">
+                        HAPUS
+                    </button>
+                    <button onclick="checkAnswer()" class="flex-[2] bg-green-400 hover:bg-green-500 text-white font-black text-xl py-3 rounded-xl shadow-md border-b-4 border-green-600 active:translate-y-1 active:border-b-0 title-font">
+                        PERIKSA
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Message Toast -->
+            <div id="toast-msg" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-6 py-4 rounded-2xl shadow-2xl border-4 font-bold text-xl text-center hidden z-50 transition-opacity">
+                <!-- Text here -->
+            </div>
+        </div>
+
+        <!-- ==================== RESULT SCREEN ==================== -->
+        <div id="screen-result" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-blue-100 to-green-100">
+            <div class="text-6xl mb-4 animate-bounce">🏆</div>
+            <h1 class="text-4xl text-green-600 mb-2 title-font drop-shadow">HEBAT!</h1>
+            <h2 class="text-2xl text-slate-700 mb-6 font-bold">Kamu Sudah Selesai!</h2>
+            
+            <div class="bg-white p-6 rounded-3xl shadow-xl w-full max-w-sm mb-8 border-4 border-yellow-400">
+                <div class="text-lg font-bold text-slate-500 mb-1">Skor Akhirmu</div>
+                <div class="text-6xl text-orange-500 title-font mb-4" id="final-score">100</div>
+                
+                <div class="flex justify-center gap-2 text-4xl mb-4" id="star-container">
+                    <!-- Stars injected here -->
+                </div>
+                
+                <div class="text-lg font-bold text-green-600 bg-green-50 py-2 rounded-xl">
+                    Benar: <span id="final-correct">8</span> dari 8 Soal
+                </div>
+            </div>
+            
+            <div class="flex flex-col gap-3 w-full max-w-xs">
+                <button onclick="resetGame()" class="btn-bubbly rounded-2xl py-4 text-xl title-font">
+                    MAIN LAGI
+                </button>
+                <button onclick="goHome()" class="bg-slate-300 hover:bg-slate-400 text-slate-700 font-bold py-3 rounded-2xl border-b-4 border-slate-400 active:translate-y-1 active:border-b-0 transition-all text-lg">
+                    KEMBALI KE MENU
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DATA & STATE ---
+        const puzzleData = [
+            { id: 1, pos: 0, ans: '4', clueA: "2 + 2 = ...", clueD: "3 + 1 = ..." },
+            { id: 2, pos: 1, ans: '6', clueA: "3 + 3 = ...", clueD: "5 + 1 = ..." },
+            { id: 3, pos: 2, ans: '9', clueA: "5 + 4 = ...", clueD: "7 + 2 = ..." },
+            { id: 4, pos: 3, ans: '5', clueA: "2 + 3 = ...", clueD: "4 + 1 = ..." },
+            { id: 5, pos: 4, ans: '7', clueA: "4 + 3 = ...", clueD: "5 + 2 = ..." },
+            { id: 6, pos: 5, ans: '8', clueA: "4 + 4 = ...", clueD: "6 + 2 = ..." },
+            { id: 7, pos: 6, ans: '3', clueA: "1 + 2 = ...", clueD: "2 + 1 = ..." },
+            { id: 8, pos: 7, ans: '10', clueA: "5 + 5 = ...", clueD: "6 + 4 = ..." }
+        ];
+
+        let state = {
+            activeCell: null,
+            currentInput: '',
+            score: 0,
+            correctCount: 0,
+            solvedIds: [],
+            isAudioEnabled: false
+        };
+
+        // --- AUDIO ENGINE (Web Audio API) ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let bgmInterval;
+        let isBgmPlaying = false;
+
+        const bgmNotes = [392.00, 329.63, 261.63, 329.63, 392.00, 523.25]; // G4, E4, C4, E4, G4, C5 (Cheerful melody)
+        let noteIdx = 0;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playTone(frequency, duration, type='sine', vol=0.1) {
+            if (!state.isAudioEnabled || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            
+            // Envelope
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function loopBGM() {
+            if(!isBgmPlaying) return;
+            playTone(bgmNotes[noteIdx], 0.3, 'sine', 0.03); // Very soft background melody
+            noteIdx = (noteIdx + 1) % bgmNotes.length;
+        }
+
+        function toggleAudio() {
+            initAudio();
+            state.isAudioEnabled = !state.isAudioEnabled;
+            const btn = document.getElementById('btn-audio');
+            
+            if (state.isAudioEnabled) {
+                btn.innerHTML = '🎵';
+                btn.classList.replace('bg-slate-300', 'bg-yellow-300');
+                isBgmPlaying = true;
+                if(!bgmInterval) bgmInterval = setInterval(loopBGM, 600);
+                playTone(523.25, 0.1, 'triangle', 0.1); // UI blip
+            } else {
+                btn.innerHTML = '🔇';
+                btn.classList.replace('bg-yellow-300', 'bg-slate-300');
+                isBgmPlaying = false;
+                clearInterval(bgmInterval);
+                bgmInterval = null;
+            }
+        }
+
+        function playCorrectSound() {
+            playTone(523.25, 0.1, 'sine', 0.1); // C5
+            setTimeout(() => playTone(659.25, 0.2, 'sine', 0.1), 100); // E5
+            setTimeout(() => playTone(783.99, 0.3, 'sine', 0.1), 200); // G5
+        }
+
+        function playWrongSound() {
+            playTone(200, 0.3, 'sawtooth', 0.05);
+            setTimeout(() => playTone(150, 0.4, 'sawtooth', 0.05), 150);
+        }
+
+        // --- FULLSCREEN API ---
+        function toggleFullscreen() {
+            const elem = document.documentElement;
+            if (!document.fullscreenElement) {
+                if (elem.requestFullscreen) { elem.requestFullscreen(); }
+                else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); } // Safari
+                else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); } // IE11
+            } else {
+                if (document.exitFullscreen) { document.exitFullscreen(); }
+                else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+                else if (document.msExitFullscreen) { document.msExitFullscreen(); }
+            }
+        }
+
+
+        // --- NAVIGATION & INIT ---
+        function showInstructions() { document.getElementById('modal-instructions').classList.remove('hidden'); }
+        function hideInstructions() { document.getElementById('modal-instructions').classList.add('hidden'); }
+        
+        function startGame() {
+            initAudio();
+            document.getElementById('screen-home').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+            document.getElementById('screen-game').classList.add('flex');
+            
+            // Auto enable audio if not yet set, but respectfully
+            if(audioCtx && !state.isAudioEnabled) {
+               // toggleAudio(); // Optional: uncomment to auto-start music
+            }
+            
+            resetGame();
+        }
+
+        function goHome() {
+            document.getElementById('screen-result').classList.add('hidden');
+            document.getElementById('screen-home').classList.remove('hidden');
+            document.getElementById('screen-game').classList.remove('flex');
+            document.getElementById('screen-game').classList.add('hidden');
+        }
+
+        function resetGame() {
+            state.score = 0;
+            state.correctCount = 0;
+            state.solvedIds = [];
+            state.activeCell = null;
+            state.currentInput = '';
+            
+            document.getElementById('screen-result').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+            document.getElementById('screen-game').classList.add('flex');
+            
+            updateStatsUI();
+            renderGrid();
+            resetInputArea();
+        }
+
+        // --- RENDER GRID ---
+        function renderGrid() {
+            const container = document.getElementById('crossword-container');
+            container.innerHTML = '';
+            
+            // Render 8 cells based on puzzleData
+            puzzleData.forEach(cellObj => {
+                const isSolved = state.solvedIds.includes(cellObj.id);
+                
+                const cellEl = document.createElement('div');
+                cellEl.className = `cw-cell ${isSolved ? 'solved' : ''}`;
+                cellEl.id = `cell-${cellObj.id}`;
+                
+                // Content
+                let content = isSolved ? cellObj.ans : '';
+                
+                cellEl.innerHTML = `
+                    <span class="cw-number">${cellObj.id}</span>
+                    <span class="ans-text">${content}</span>
+                `;
+                
+                cellEl.onclick = () => selectCell(cellObj.id);
+                container.appendChild(cellEl);
+            });
+        }
+
+        function selectCell(id) {
+            if (state.solvedIds.includes(id)) return; // Already solved
+            playTone(440, 0.05, 'triangle', 0.05); // blip
+            
+            // Remove active from all
+            document.querySelectorAll('.cw-cell').forEach(el => el.classList.remove('active'));
+            
+            // Set new active
+            state.activeCell = puzzleData.find(c => c.id === id);
+            state.currentInput = '';
+            
+            const cellEl = document.getElementById(`cell-${id}`);
+            cellEl.classList.add('active');
+            cellEl.querySelector('.ans-text').innerText = ''; // clear preview
+            
+            updateInputUI();
+            
+            // Show Clues
+            document.getElementById('clue-text').innerHTML = `
+                <div class="text-sky-700">Mendatar ${id}: <span class="text-2xl">${state.activeCell.clueA}</span></div>
+                <div class="text-orange-600 mt-1">Menurun ${id}: <span class="text-2xl">${state.activeCell.clueD}</span></div>
+            `;
+            document.getElementById('visual-aid').classList.add('hidden');
+            document.getElementById('btn-hint').classList.remove('hidden');
+        }
+
+        // --- INPUT HANDLING ---
+        function pressNum(num) {
+            if (!state.activeCell) {
+                showToast("Pilih kotak nomor dulu ya! 👆", "border-orange-400 text-orange-600");
+                playTone(200, 0.1, 'sawtooth');
+                return;
+            }
+            playTone(800 + (num*50), 0.05, 'sine', 0.05);
+            
+            // Allow up to 2 digits (for '10')
+            if (state.currentInput.length < 2) {
+                if (state.currentInput === '0') state.currentInput = ''; // prevent leading zeros
+                state.currentInput += num.toString();
+            } else {
+                state.currentInput = num.toString(); // replace if already 2 digits
+            }
+            updateInputUI();
+        }
+
+        function clearInput() {
+            if(state.currentInput) {
+                playTone(300, 0.05, 'square', 0.05);
+                state.currentInput = '';
+                updateInputUI();
+            }
+        }
+
+        function updateInputUI() {
+            const display = document.getElementById('input-display');
+            display.innerText = state.currentInput || '?';
+            display.classList.toggle('text-slate-400', !state.currentInput);
+            display.classList.toggle('text-sky-600', !!state.currentInput);
+            
+            // Update preview in grid
+            if (state.activeCell) {
+                const cellEl = document.getElementById(`cell-${state.activeCell.id}`);
+                cellEl.querySelector('.ans-text').innerText = state.currentInput;
+            }
+        }
+
+        function resetInputArea() {
+            document.getElementById('clue-text').innerHTML = "Pilih kotak nomor di atas ya! 👆";
+            document.getElementById('input-display').innerText = '?';
+            document.getElementById('input-display').classList.add('text-slate-400');
+            document.getElementById('btn-hint').classList.add('hidden');
+            document.getElementById('visual-aid').classList.add('hidden');
+        }
+
+
+        // --- LOGIC & VALIDATION ---
+        function showHint() {
+            if (!state.activeCell) return;
+            playTone(600, 0.1, 'triangle', 0.05);
+            
+            const aidDiv = document.getElementById('visual-aid');
+            aidDiv.classList.remove('hidden');
+            
+            // Parse clue string (e.g. "2 + 3 = ...")
+            const parts = state.activeCell.clueA.match(/(\d+)\s*\+\s*(\d+)/);
+            if (parts && parts.length === 3) {
+                const num1 = parseInt(parts[1]);
+                const num2 = parseInt(parts[2]);
+                
+                let apples1 = Array(num1).fill('🍎').join('');
+                let apples2 = Array(num2).fill('🍏').join('');
+                
+                aidDiv.innerHTML = `${apples1} <span class="text-slate-400 mx-2">+</span> ${apples2}`;
+                aidDiv.classList.add('animate-pop');
+                setTimeout(() => aidDiv.classList.remove('animate-pop'), 300);
+            }
+        }
+
+        function checkAnswer() {
+            if (!state.activeCell) {
+                showToast("Pilih kotak nomor dulu ya! 👆", "border-orange-400 text-orange-600");
+                playTone(200, 0.1, 'sawtooth');
+                return;
+            }
+            if (!state.currentInput) {
+                showToast("Ketik jawabanmu dulu! ⌨️", "border-orange-400 text-orange-600");
+                playTone(200, 0.1, 'sawtooth');
+                return;
+            }
+
+            const cellEl = document.getElementById(`cell-${state.activeCell.id}`);
+
+            if (state.currentInput === state.activeCell.ans) {
+                // Correct!
+                playCorrectSound();
+                state.solvedIds.push(state.activeCell.id);
+                state.correctCount++;
+                
+                // Score calc (e.g. 100 / 8 = 12.5 per answer, let's just do 10 per answer + 20 bonus at end)
+                state.score += 10;
+                
+                // Visuals
+                cellEl.classList.remove('active');
+                cellEl.classList.add('solved');
+                
+                // Star burst animation
+                const star = document.createElement('div');
+                star.className = 'star-burst';
+                star.innerHTML = '⭐';
+                cellEl.appendChild(star);
+                setTimeout(() => star.remove(), 1000);
+
+                showToast("Benar! Hebat! ⭐", "border-green-400 text-green-600");
+                
+                state.activeCell = null;
+                state.currentInput = '';
+                updateStatsUI();
+                resetInputArea();
+
+                // Check Win
+                if (state.correctCount === puzzleData.length) {
+                    setTimeout(endGame, 1500);
+                }
+
+            } else {
+                // Wrong
+                playWrongSound();
+                cellEl.classList.add('wrong');
+                showToast("Yuk, coba hitung lagi! 🤔", "border-orange-400 text-orange-600");
+                
+                setTimeout(() => {
+                    cellEl.classList.remove('wrong');
+                    clearInput();
+                }, 1500);
+            }
+        }
+
+        // --- UI UPDATES ---
+        function updateStatsUI() {
+            document.getElementById('score-display').innerText = state.score;
+            document.getElementById('correct-display').innerText = state.correctCount;
+            
+            const percent = (state.correctCount / puzzleData.length) * 100;
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+        }
+
+        function showToast(msg, colorClass) {
+            const toast = document.getElementById('toast-msg');
+            toast.innerText = msg;
+            toast.className = `absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-6 py-4 rounded-2xl shadow-2xl border-4 font-bold text-xl text-center z-50 transition-all animate-pop ${colorClass}`;
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                    toast.classList.remove('opacity-0');
+                }, 300);
+            }, 1200);
+        }
+
+        function endGame() {
+            document.getElementById('screen-game').classList.remove('flex');
+            document.getElementById('screen-game').classList.add('hidden');
+            
+            const resScreen = document.getElementById('screen-result');
+            resScreen.classList.remove('hidden');
+            resScreen.classList.add('flex');
+            
+            // Add final bonus
+            state.score += 20; 
+            
+            document.getElementById('final-score').innerText = state.score;
+            document.getElementById('final-correct').innerText = state.correctCount;
+            
+            // Generate Stars
+            const starContainer = document.getElementById('star-container');
+            starContainer.innerHTML = '';
+            for(let i=0; i<3; i++) {
+                setTimeout(() => {
+                    playTone(600 + (i*100), 0.2, 'sine', 0.1);
+                    starContainer.innerHTML += `<div class="animate-pop" style="animation-delay: ${i*0.2}s">⭐</div>`;
+                }, i * 300);
+            }
+        }
+
+        // Keyboard support for accessibility
+        window.addEventListener('keydown', (e) => {
+            if (document.getElementById('screen-game').classList.contains('hidden')) return;
+            
+            if (e.key >= '0' && e.key <= '9') {
+                pressNum(e.key);
+            } else if (e.key === 'Backspace' || e.key === 'Delete') {
+                clearInput();
+            } else if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+
+    </script>
+</body>
+</html>
